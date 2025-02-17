@@ -1,11 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <!-- Firebase SDK -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tripleAAAchat</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Previous CSS remains the same */
         * {
             margin: 0;
             padding: 0;
@@ -17,337 +20,758 @@
             background-color: #1a1a1a;
             color: #ffffff;
             height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
 
-        .room-container {
-            max-width: 800px;
-            margin: 20px auto;
-            width: 100%;
-            padding: 20px;
-        }
-
-        .room-join {
+        .auth-container {
+            max-width: 400px;
+            margin: 100px auto;
             background-color: #252525;
             padding: 20px;
             border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        .room-info {
-            background-color: #252525;
+        .auth-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .auth-toggle button {
+            flex: 1;
+            padding: 10px;
+            background: #333;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .auth-toggle button.active {
+            background: #2962ff;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #1e1e1e;
             padding: 10px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            box-shadow: 0 2px 5px rgba(26, 26, 26, 0.3);
         }
 
-        .chat-container {
-            max-width: 800px;
-            margin: 0 auto;
-            flex-grow: 1;
-            display: none;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 20px;
-            background-color: #252525;
-            border-radius: 8px;
-            padding: 20px;
-            min-height: 400px;
-        }
-
-        .message {
-            margin-bottom: 15px;
-            padding: 10px 15px;
-            border-radius: 8px;
-            max-width: 70%;
-            word-wrap: break-word;
-        }
-
-        .message .username {
-            font-size: 0.8em;
-            margin-bottom: 4px;
-            opacity: 0.8;
-        }
-
-        .sent {
-            background-color: #2962ff;
-            margin-left: auto;
-        }
-
-        .received {
-            background-color: #424242;
-        }
-
-        .input-container {
+        .logo-container {
             display: flex;
+            align-items: center;
             gap: 10px;
         }
 
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
+        .logo {
+            width: 40px;
+            height: 40px;
+            background-color: #2962ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .app-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            height: calc(100vh - 60px);
+            position: relative;
+            margin-top: 60px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
             background-color: #333;
+            border: 1px solid #444;
+            border-radius: 4px;
             color: white;
-            font-size: 16px;
         }
 
         button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
+            padding: 10px 20px;
             background-color: #2962ff;
             color: white;
+            border: none;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
         }
 
         button:hover {
             background-color: #1e4bd8;
         }
 
-        input:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px #2962ff;
+        .sidebar {
+            width: 280px;
+            background-color: #252525;
+            height: 100%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 60px;
+            z-index: 100;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
         }
 
-        .system-message {
-            text-align: center;
-            color: #888;
-            margin: 10px 0;
-            font-style: italic;
+        .main-content {
+            flex-grow: 1;
+            margin-left: 280px;
+            background-color: #252525;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            transition: margin-left 0.3s ease;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background-color: #333;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 10px;
+            border-radius: 4px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message.sent {
+            background-color: #1cdf5d;
+            align-self: flex-end;
+        }
+
+        .message.received {
+            background-color: #424242;
+            align-self: flex-start;
+        }
+
+        .chat-input {
+            padding: 15px;
+            background-color: #333;
+            border-radius: 0 0 8px 8px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .active-chats {
+            margin-top: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            padding: 10px;
+            background-color: #333;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            cursor: pointer;
+        }
+
+        .chat-item:hover {
+            background-color: #424242;
+        }
+
+        #chat-view {
+            display: none;
+            width: 100%;
+        }
+
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 15px 25px;
+            background-color: #333;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .error {
+            background-color: #dc3545;
+        }
+
+        .success {
+            background-color: #28a745;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 250px;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+                box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .overlay {
+                display: none;
+                position: fixed;
+                top: 60px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 90;
+            }
+
+            .overlay.active {
+                display: block;
+            }
+
+            .auth-container {
+                margin: 50px auto;
+                max-width: 90%;
+            }
+
+            .message {
+                max-width: 85%;
+            }
+
+            .app-name {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chat-input {
+                flex-direction: column;
+            }
+
+            .input-group {
+                width: 100%;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+
+            .logo {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+
+            .app-name {
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="room-container">
-        <div class="room-join" id="room-join">
-            <h2 style="margin-bottom: 20px;">Join a Chat Room</h2>
-            <div class="input-container" style="margin-bottom: 10px;">
-                <input type="text" id="username-input" placeholder="Enter your name">
-            </div>
-            <div class="input-container">
-                <input type="text" id="room-id-input" placeholder="Enter Room ID">
-                <button id="join-button">Join Room</button>
-            </div>
-            <button id="create-room-button" style="margin-top: 10px; width: 100%; background-color: #424242;">Create New Room</button>
+    <!-- Auth View -->
+    <div id="auth-view" class="auth-container">
+        <div class="auth-toggle">
+            <button id="login-toggle" class="active">Login</button>
+            <button id="signup-toggle">Sign Up</button>
         </div>
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button id="auth-btn" style="width: 100%;">Login</button>
+        </div>
+    </div>
 
-        <div class="room-info" id="room-info">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    Room ID: <strong id="current-room-id"></strong>
-                    | Username: <strong id="current-username"></strong>
+    <!-- Main Chat View -->
+    <div id="chat-view">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="logo-container">
+                <div class="logo">
+                <img src="AAA WHITE.png" alt="Logo" style="width: 80px; height: auto;">
                 </div>
-                <button id="leave-room" style="background-color: #dc3545;">Leave Room</button>
+                <div class="app-name">tripleAAAchat</div>
             </div>
+            <button id="menu-toggle" class="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
 
-        <div class="chat-container" id="chat-container">
-            <div class="messages" id="messages"></div>
-            <div class="input-container">
-                <input type="text" id="message-input" placeholder="Type your message...">
-                <button id="send-button">Send</button>
+        <div class="container">
+            <div id="overlay" class="overlay"></div>
+            <div id="sidebar" class="sidebar">
+                <div class="input-group">
+                    <input type="text" id="room-id" placeholder="Enter Room ID">
+                    <button id="join-room-btn">Join Room</button>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" id="receiver-username" placeholder="Enter Username">
+                    <button id="start-chat-btn">Start Chat</button>
+                </div>
+
+                <div class="active-chats">
+                    <h3>Active Chats</h3>
+                    <div id="active-chats-list"></div>
+                </div>
+
+                <div style="margin-top: auto;">
+                    <p id="current-user" style="margin-bottom: 10px;"></p>
+                    <button id="logout-btn" style="width: 100%; background-color: #dc3545;">Logout</button>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <div class="chat-header" id="chat-header">
+                    <span>Select a chat to start messaging</span>
+                    <div></div> <!-- Empty div for flex spacing -->
+                </div>
+                <div class="chat-messages" id="chat-messages"></div>
+                <div class="chat-input">
+                    <input type="text" id="message-input" placeholder="Type your message...">
+                    <button id="send-btn">Send</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Your Firebase configuration
+        // Firebase configuration
         const firebaseConfig = {
-  apiKey: "AIzaSyA84Ww305D8edDJwPmIWPhVNHfCrKqLHYw",
-  authDomain: "tripleaaachat.firebaseapp.com",
-  projectId: "tripleaaachat",
-  storageBucket: "tripleaaachat.firebasestorage.app",
-  messagingSenderId: "309085164161",
-  appId: "1:309085164161:web:7c4b3663b7ca1911ed3380",
-  measurementId: "G-47KXH03LXP",
-  databaseURL: "https://tripleaaachat-default-rtdb.europe-west1.firebasedatabase.app"
-};
+            apiKey: "AIzaSyA84Ww305D8edDJwPmIWPhVNHfCrKqLHYw",
+            authDomain: "tripleaaachat.firebaseapp.com",
+            projectId: "tripleaaachat",
+            storageBucket: "tripleaaachat.firebasestorage.app",
+            messagingSenderId: "309085164161",
+            appId: "1:309085164161:web:7c4b3663b7ca1911ed3380",
+            measurementId: "G-47KXH03LXP",
+            databaseURL: "https://tripleaaachat-default-rtdb.europe-west1.firebasedatabase.app"
+        };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
 
-        const roomJoin = document.getElementById('room-join');
-        const roomInfo = document.getElementById('room-info');
-        const chatContainer = document.getElementById('chat-container');
-        const messagesContainer = document.getElementById('messages');
+        // DOM Elements
+        const authView = document.getElementById('auth-view');
+        const chatView = document.getElementById('chat-view');
+        const loginToggle = document.getElementById('login-toggle');
+        const signupToggle = document.getElementById('signup-toggle');
+        const username = document.getElementById('username');
+        const password = document.getElementById('password');
+        const authBtn = document.getElementById('auth-btn');
+        const currentUser = document.getElementById('current-user');
+        const roomIdInput = document.getElementById('room-id');
+        const joinRoomBtn = document.getElementById('join-room-btn');
+        const receiverInput = document.getElementById('receiver-username');
+        const startChatBtn = document.getElementById('start-chat-btn');
+        const activeChats = document.getElementById('active-chats-list');
+        const chatHeader = document.getElementById('chat-header').querySelector('span');
         const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
-        const roomIdInput = document.getElementById('room-id-input');
-        const usernameInput = document.getElementById('username-input');
-        const joinButton = document.getElementById('join-button');
-        const createRoomButton = document.getElementById('create-room-button');
-        const leaveRoomButton = document.getElementById('leave-room');
-        const currentRoomIdSpan = document.getElementById('current-room-id');
-        const currentUsernameSpan = document.getElementById('current-username');
-
-        let currentRoomId = null;
+        const sendBtn = document.getElementById('send-btn');
+        const chatMessages = document.getElementById('chat-messages');
+        const sidebar = document.getElementById('sidebar');
+        const menuToggle = document.getElementById('menu-toggle');
+        const overlay = document.getElementById('overlay');
+        const appName = document.querySelector('.app-name');
+        
         let currentUsername = null;
-        let currentMessagesRef = null;
+        let currentChatId = null;
+        let activeChatRefs = [];
 
-        // Show initial room join screen
-        roomJoin.style.display = 'block';
+        // Responsive sidebar toggle
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        });
 
-        function generateRoomId() {
-            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+
+        // Update app name with current chat name
+        function updateAppName(chatName) {
+            const originalName = "tripleAAAchat";
+            if (chatName && chatName !== "Select a chat to start messaging") {
+                appName.textContent = originalName + " - " + chatName;
+            } else {
+                appName.textContent = originalName;
+            }
         }
 
-        function addMessage(message, isSent, username) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            messageElement.classList.add(isSent ? 'sent' : 'received');
-            
-            const usernameDiv = document.createElement('div');
-            usernameDiv.classList.add('username');
-            usernameDiv.textContent = username;
-            
-            const messageContent = document.createElement('div');
-            messageContent.textContent = message;
-            
-            messageElement.appendChild(usernameDiv);
-            messageElement.appendChild(messageContent);
-            
-            messagesContainer.appendChild(messageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Close sidebar when selecting a chat on mobile
+        function closeSidebarOnMobile() {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            }
         }
 
-        function addSystemMessage(message) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('system-message');
-            messageElement.textContent = message;
-            messagesContainer.appendChild(messageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
         }
 
-        function joinRoom(roomId, username) {
-            if (!username) {
-                alert('Please enter your name');
-                return false;
+        // Auth Toggle
+        loginToggle.addEventListener('click', () => {
+            loginToggle.classList.add('active');
+            signupToggle.classList.remove('active');
+            authBtn.textContent = 'Login';
+        });
+
+        signupToggle.addEventListener('click', () => {
+            signupToggle.classList.add('active');
+            loginToggle.classList.remove('active');
+            authBtn.textContent = 'Sign Up';
+        });
+
+        // Authentication
+        authBtn.addEventListener('click', () => {
+            const user = username.value.trim();
+            const pass = password.value;
+            const isLogin = loginToggle.classList.contains('active');
+
+            if (!user || !pass) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+
+            const email = `${user}@chat.app`;
+
+            if (isLogin) {
+                // Login
+                auth.signInWithEmailAndPassword(email, pass)
+                    .then(() => {
+                        handleSuccessfulAuth(user);
+                    })
+                    .catch(error => showNotification(error.message, 'error'));
+            } else {
+                // Sign Up
+                auth.createUserWithEmailAndPassword(email, pass)
+                    .then(() => {
+                        handleSuccessfulAuth(user);
+                        // Create user profile
+                        database.ref(`users/${user}`).set({
+                            online: true,
+                            createdAt: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    })
+                    .catch(error => showNotification(error.message, 'error'));
+            }
+        });
+
+        function handleSuccessfulAuth(user) {
+            currentUsername = user;
+            currentUser.textContent = `Logged in as: ${user}`;
+            authView.style.display = 'none';
+            chatView.style.display = 'block';
+            
+            // Set user as online
+            database.ref(`users/${user}/online`).set(true);
+            // Set offline when disconnected
+            database.ref(`users/${user}/online`).onDisconnect().set(false);
+            
+            // Load active chats
+            loadActiveChats();
+            
+            showNotification('Authentication successful!');
+        }
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            if (currentUsername) {
+                database.ref(`users/${currentUsername}/online`).set(false);
+                auth.signOut().then(() => {
+                    authView.style.display = 'block';
+                    chatView.style.display = 'none';
+                    currentUsername = null;
+                    currentChatId = null;
+                    username.value = '';
+                    password.value = '';
+                    // Clear chats
+                    activeChats.innerHTML = '';
+                    chatMessages.innerHTML = '';
+                    chatHeader.textContent = 'Select a chat to start messaging';
+                    updateAppName('');
+                    
+                    // Remove active chat listeners
+                    activeChatRefs.forEach(ref => {
+                        database.ref(ref).off();
+                    });
+                    activeChatRefs = [];
+                    
+                    showNotification('Logged out successfully');
+                });
+            }
+        });
+
+        // Join Room - Updated to create room if it doesn't exist
+        joinRoomBtn.addEventListener('click', () => {
+            const roomId = roomIdInput.value.trim();
+            if (!roomId) {
+                showNotification('Please enter a room ID', 'error');
+                return;
             }
             
-            // Unsubscribe from previous room if any
-            if (currentMessagesRef) {
-                currentMessagesRef.off();
-            }
-
-            currentRoomId = roomId;
-            currentUsername = username;
-            currentRoomIdSpan.textContent = roomId;
-            currentUsernameSpan.textContent = username;
-            
-            // Set up Firebase listeners
-            currentMessagesRef = database.ref('rooms/' + roomId + '/messages');
-            currentMessagesRef.on('child_added', (snapshot) => {
-                const message = snapshot.val();
-                addMessage(
-                    message.text,
-                    message.username === currentUsername,
-                    message.username
-                );
-            });
-
-            // Add user to room
-            database.ref('rooms/' + roomId + '/users/' + username).set(true);
-            
-            roomJoin.style.display = 'none';
-            roomInfo.style.display = 'block';
-            chatContainer.style.display = 'flex';
-            messagesContainer.innerHTML = '';
-            addSystemMessage(`${username} joined room ${roomId}`);
-            return true;
-        }
-
-        function leaveRoom() {
-            if (currentRoomId && currentUsername) {
-                // Remove user from room
-                database.ref('rooms/' + currentRoomId + '/users/' + currentUsername).remove();
-                
-                // Unsubscribe from messages
-                if (currentMessagesRef) {
-                    currentMessagesRef.off();
+            // Check if room exists, create it if not
+            database.ref(`chats/${roomId}`).once('value', snapshot => {
+                if (snapshot.exists()) {
+                    // Room exists, add user to participants
+                    database.ref(`chats/${roomId}/participants/${currentUsername}`).set(true);
+                    switchToChat(roomId, snapshot.val().name || `Room: ${roomId}`);
+                    showNotification(`Joined room: ${roomId}`);
+                } else {
+                    // Room doesn't exist, create it
+                    database.ref(`chats/${roomId}`).set({
+                        type: 'group',
+                        participants: {
+                            [currentUsername]: true
+                        },
+                        name: `Room: ${roomId}`,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP,
+                        createdBy: currentUsername
+                    }).then(() => {
+                        switchToChat(roomId, `Room: ${roomId}`);
+                        showNotification(`Created and joined room: ${roomId}`);
+                    }).catch(error => {
+                        showNotification(`Error creating room: ${error.message}`, 'error');
+                    });
                 }
-            }
+                roomIdInput.value = '';
+                closeSidebarOnMobile();
+            });
+        });
 
-            currentRoomId = null;
-            currentUsername = null;
-            currentMessagesRef = null;
-            roomJoin.style.display = 'block';
-            roomInfo.style.display = 'none';
-            chatContainer.style.display = 'none';
-            roomIdInput.value = '';
-            usernameInput.value = '';
+        // Start a new chat
+        startChatBtn.addEventListener('click', () => {
+            const receiver = receiverInput.value.trim();
+            if (!receiver) {
+                showNotification('Please enter a username', 'error');
+                return;
+            }
+            
+            if (receiver === currentUsername) {
+                showNotification('Cannot chat with yourself', 'error');
+                return;
+            }
+            
+            // Check if user exists
+            database.ref(`users/${receiver}`).once('value', snapshot => {
+                if (snapshot.exists()) {
+                    createOrLoadChat(receiver);
+                    receiverInput.value = '';
+                    closeSidebarOnMobile();
+                } else {
+                    showNotification('User does not exist', 'error');
+                }
+            });
+        });
+
+        function createOrLoadChat(otherUser) {
+            // Generate a deterministic chat ID
+            const users = [currentUsername, otherUser].sort();
+            const chatId = `private_${users[0]}_${users[1]}`;
+            
+            // Check if chat already exists
+            database.ref(`chats/${chatId}`).once('value', snapshot => {
+                if (!snapshot.exists()) {
+                    // Create new chat
+                    database.ref(`chats/${chatId}`).set({
+                        type: 'private',
+                        participants: {
+                            [users[0]]: true,
+                            [users[1]]: true
+                        },
+                        name: `Chat with ${otherUser}`,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+                
+                switchToChat(chatId, `Chat with ${otherUser}`);
+            });
         }
 
-        function handleSendMessage() {
+        function loadActiveChats() {
+            // Clear current chats
+            activeChats.innerHTML = '';
+            activeChatRefs.forEach(ref => {
+                database.ref(ref).off();
+            });
+            activeChatRefs = [];
+            
+            // Query for chats where current user is a participant
+            database.ref('chats').orderByChild(`participants/${currentUsername}`).equalTo(true).on('value', snapshot => {
+                if (snapshot.exists()) {
+                    activeChats.innerHTML = '';
+                    snapshot.forEach(chatSnapshot => {
+                        const chatId = chatSnapshot.key;
+                        const chatData = chatSnapshot.val();
+                        
+                        // Create chat item element
+                        const chatItem = document.createElement('div');
+                        chatItem.className = 'chat-item';
+                        
+                        // Set chat name based on type
+                        let chatName = chatData.name || chatId;
+                        if (chatData.type === 'private') {
+                            // Find the other participant for private chats
+                            const participants = Object.keys(chatData.participants || {});
+                            const otherUser = participants.find(p => p !== currentUsername);
+                            if (otherUser) {
+                                chatName = `Chat with ${otherUser}`;
+                            }
+                        }
+                        
+                        chatItem.textContent = chatName;
+                        chatItem.addEventListener('click', () => {
+                            switchToChat(chatId, chatName);
+                            closeSidebarOnMobile();
+                        });
+                        
+                        activeChats.appendChild(chatItem);
+                    });
+                } else {
+                    activeChats.innerHTML = '<p>No active chats</p>';
+                }
+            });
+            
+            // Save reference to remove listener later
+            activeChatRefs.push(`chats`);
+        }
+
+        function switchToChat(chatId, chatName) {
+            // Remove previous chat listener if exists
+            if (currentChatId) {
+                database.ref(`chats/${currentChatId}/messages`).off();
+            }
+            
+            currentChatId = chatId;
+            chatHeader.textContent = chatName;
+            updateAppName(chatName);
+            chatMessages.innerHTML = '';
+            
+            // Load messages
+            database.ref(`chats/${chatId}/messages`).on('child_added', snapshot => {
+                const message = snapshot.val();
+                displayMessage(message);
+            });
+        }
+
+        function displayMessage(message) {
+            const messageElem = document.createElement('div');
+            messageElem.className = `message ${message.sender === currentUsername ? 'sent' : 'received'}`;
+            
+            const text = document.createElement('div');
+            text.textContent = message.text;
+            
+            const info = document.createElement('div');
+            info.style.fontSize = '0.8em';
+            info.style.opacity = '0.7';
+            info.textContent = `${message.sender} • ${new Date(message.timestamp).toLocaleTimeString()}`;
+            
+            messageElem.appendChild(text);
+            messageElem.appendChild(info);
+            
+            chatMessages.appendChild(messageElem);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Send Message
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function sendMessage() {
             const message = messageInput.value.trim();
-            if (message && currentRoomId && currentUsername) {
-                // Push message to Firebase
-                currentMessagesRef.push({
+            if (message && currentChatId) {
+                database.ref(`chats/${currentChatId}/messages`).push({
                     text: message,
-                    username: currentUsername,
+                    sender: currentUsername,
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 });
-                
                 messageInput.value = '';
+            } else if (!currentChatId) {
+                showNotification('Please select a chat first', 'error');
             }
         }
 
-        // Event Listeners
-        createRoomButton.addEventListener('click', () => {
-            const username = usernameInput.value.trim();
-            const newRoomId = generateRoomId();
-            joinRoom(newRoomId, username);
-        });
-
-        joinButton.addEventListener('click', () => {
-            const roomId = roomIdInput.value.trim();
-            const username = usernameInput.value.trim();
-            if (roomId) {
-                joinRoom(roomId, username);
-            }
-        });
-
-        leaveRoomButton.addEventListener('click', leaveRoom);
-
-        sendButton.addEventListener('click', handleSendMessage);
-        
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                handleSendMessage();
-            }
-        });
-
-        roomIdInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const roomId = roomIdInput.value.trim();
-                const username = usernameInput.value.trim();
-                if (roomId) {
-                    joinRoom(roomId, username);
-                }
-            }
-        });
-
-        usernameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                roomIdInput.focus();
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
             }
         });
 
         // Clean up on page unload
         window.addEventListener('beforeunload', () => {
-            leaveRoom();
+            if (currentUsername) {
+                database.ref(`users/${currentUsername}/online`).set(false);
+            }
         });
+
+        // Initialize app name
+        updateAppName('');
     </script>
 </body>
 </html>
