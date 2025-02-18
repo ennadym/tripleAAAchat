@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>tripleAAAchat</title>
     <link rel="icon" type="image/x-icon" href="AAA WHITE.png">
+    <link rel="png" type="image/png" sizes="64x64" href="AAA WHITE.png">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -324,7 +325,23 @@
     </style>
 </head>
 <body>
-    <!-- Auth View -->
+<style>
+    .header {
+        display: flex;
+        align-items: center;
+    }
+
+    .header img {
+        width: 50px;
+        margin-right: 10px;
+    }
+
+    .header h1 {
+        font-size: 24px;
+        margin: 0;
+    }
+</style>
+    
     <div id="auth-view" class="auth-container">
         <div class="auth-toggle">
             <button id="login-toggle" class="active">Login</button>
@@ -343,7 +360,7 @@
         <div class="top-bar">
             <div class="logo-container">
                 <div class="logo">
-                <img src="AAA WHITE.png" alt="Logo" style="width: 70px; height: auto;">
+                <img src="AAA WHITE.png" alt="Logo" style="width: 80px; height: auto;">
                 </div>
                 <div class="app-name">tripleAAAchat</div>
             </div>
@@ -389,7 +406,7 @@
             </div>
         </div>
     </div>
-
+</style>
     <script>
         // Firebase configuration
         const firebaseConfig = {
@@ -535,6 +552,9 @@
             loadActiveChats();
             
             showNotification('Authentication successful!');
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('currentUsername', user);
+
         }
 
         // Logout
@@ -561,6 +581,11 @@
                     activeChatRefs = [];
                     
                     showNotification('Logged out successfully');
+
+                    localStorage.removeItem('isLoggedIn');
+                    localStorage.removeItem('currentUsername');
+
+
                 });
             }
         });
@@ -756,7 +781,7 @@
             }
         }
 
-        // Handle window resize
+        
         window.addEventListener('resize', () => {
             if (window.innerWidth > 768) {
                 sidebar.classList.remove('active');
@@ -764,15 +789,27 @@
             }
         });
 
-        // Clean up on page unload
+        
         window.addEventListener('beforeunload', () => {
             if (currentUsername) {
                 database.ref(`users/${currentUsername}/online`).set(false);
             }
         });
 
-        // Initialize app name
-        updateAppName('');
+        document.addEventListener('DOMContentLoaded', () => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const storedUsername = localStorage.getItem('currentUsername');
+
+    if (isLoggedIn && storedUsername) {
+        handleSuccessfulAuth(storedUsername); 
+    } else {
+        authView.style.display = 'block';
+        chatView.style.display = 'none';
+    }
+});
+
+
+        updateAppName('tripleAAAchat');
     </script>
 </body>
 </html>
